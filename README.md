@@ -6,121 +6,94 @@
 
 This repository contains the official prototype and benchmarking suite for SafeTender, a decentralized, web-native cryptographic framework for threshold-based e-procurement without a trusted dealer[cite: 1]. 
 
-SafeTender resolves the Chronological Paradox inherent to classical Secret Sharing Schemes (SSS) by combining the additive homomorphism of elliptic curve scalar multiplication over the secp256k1 curve with Feldman Verifiable Secret Sharing (VSS) active-security guarantees[cite: 1]. All client-side cryptographic primitives execute within a memory-safe WebAssembly (Wasm) sandbox[cite: 1]. Shares are preserved across long submission-to-opening windows via a server-blind configuration driven by the OPAQUE asymmetric Password-Authenticated Key Exchange (aPAKE) protocol and Argon2id password hardening[cite: 1].
+SafeTender combines the additive homomorphism of elliptic curve operations with verifiable secret sharing (VSS) active-security guarantees[cite: 1]. The client-side core cryptographic primitives are compiled from Rust into WebAssembly (Wasm) to run inside a high-performance, memory-safe browser sandbox[cite: 1]. 
 
 ---
 
-## Repository Structure
+## 📂 Repository Structure
 
-The project is decoupled into an asynchronous server backend, a dedicated browser-side client application, and web-native WebAssembly compilation bridges[cite: 1]:
+The workspace is organized into a modular Rust cargo workspace comprising the browser-facing asset stack, the client-side WebAssembly layer, and an asynchronous backend server:
 ```text
-|-- LICENSE
-|-- README.md
-|-- client/                           # Client-side core cryptography compiled to Wasm
+|-- Cargo.toml                  # Workspace configuration
+|-- Cargo.lock
+|-- web/                        # Frontend UI and client asset pipeline
+|   |-- sharing.html            # Setup, DKG, and benchmarking dashboard
+|   |-- encryption.html         # Client-side bid encryption interface
+|   |-- reconstruction.html     # Secret share aggregation and opening panel
+|   |-- css/                    # Component stylesheets (enc.css, styles.css, all.min.css)
+|   |-- webfonts/               # Iconography assets (FontAwesome)
+|   |-- scripts/                # Execution scripts (core.js, files.js, scripts.js, bench.js)
+|   |-- pkg/                    # Web-ready target binaries and optimized assets (.br)
+|-- wasm/                       # WebAssembly interface compilation layer
 |   |-- Cargo.toml
-|   |-- Cargo.lock
-|   |-- pkg/                          # Compiled Wasm outputs and JS bindings
-|   |   |-- axclient.js
-|   |   |-- axclient_bg.wasm
-|   |   |-- axclient_bg.wasm.d.ts
-|   |   |-- package.json
-|   |   |-- axclient.d.ts
 |   |-- src/
-|       |-- lib.rs                    # Wasm implementation for bid encryption & client state
-|-- server/                           # State-blind coordination layer & static web assets
+|   |   |-- lib.rs              # JS/Wasm binding exposures (wasm-bindgen entry points)
+|   |-- pkg/                    # Compiled distribution bundle output
+|   |-- secrete_sharing/        # Monolithic cryptography kernel crate
+|       |-- Cargo.toml
+|       |-- src/
+|           |-- lib.rs          # Internal crate registration
+|           |-- fields/         # Custom prime fields and modular arithmetic implementations
+|           |   |-- fields_core/ (prime_fields.rs, hashs.rs, arithmetic.rs, builders.rs, exponent.rs)
+|           |-- curves/         # Elliptic curve scalar multiplication algebra
+|           |   |-- curves_core/ (curve_arithmetics.rs)
+|           |-- shamir/         # Shamir threshold scheme logic
+|           |   |-- shamir_core/ (core.rs)
+|           |-- encryption/     # Symmetric and hybrid envelope encryption steps
+|               |-- crypto_core/ (chacha_poly1305.rs)
+|-- server/                     # Coordination Layer
     |-- Cargo.toml
-    |-- Cargo.lock
-    |-- main.rs                       # Axum + Tokio server initialization
-    |-- wasm_interface/               # Web interfaces for distributed key generation & crypto actions
-    |   |-- Cargo.toml
-    |   |-- src/lib.rs
-    |   |-- html/                     # Interface steps (yakhdam, sharing, encryption, reconstruction)
-    |   |-- css/
-    |   |-- scripts/
-    |-- static/                       # Compiled output bins and core web assets
-    |   |-- html/                     # Role-based templates (register, login, dashboards, recovery)
-    |   |-- emails/                   # Invitation email templates
-    |   |-- pkg/                      # Copied binary payloads for frontend consumption
-    |-- tests/                        # Integration testing suite
-    |   |-- db_connection.rs
     |-- src/
-        |-- authorization_jwt/        # Short-lived JWT session issuance
-        |-- authentication_opaque/    # Server-side OPAQUE aPAKE engine & cipher suites
-        |-- handlers/                 # Endpoint logic (Shamir, Marché events, Commissions, Notifications)
-        |-- entities/                 # Database mapping (SeaORM structures)
+        |-- main.rs             # Axum / Async routing infrastructure
 ```
----
+## 🛠️ Technology Stack
 
-## Technology Stack
-
-* Crypto Core: Rust k256 crate — Constant-time secp256k1 scalar field multiplication, Feldman VSS commitments, and ECIES operations.
-* Client Engine: wasm-pack / WebAssembly — Isolates personal key fragments and polynomials inside linear memory sandboxes.
-* Auth Pipeline: OPAQUE PAKE + Argon2id — Enables server-blind storage, preventing plaintext share exposure under database breaches[cite: 1].
-* Server Tier: Axum + Tokio (Async Rust) — Handles concurrent WebSocket message relays and metadata routing without visibility into secrets.
-* Persistence: PostgreSQL + SeaORM — Stores public metadata, signed commitment vectors, and encrypted artifacts.
+* **Crypto Kernel**: Native Rust implementation containing specialized modules for `fields` (modular field arithmetic, custom primitives, and exponents) alongside `curves` (constant-time coordinate mapping) and `shamir` algorithms.
+* **Symmetric Layer**: Authenticated Encryption with Associated Data (AEAD) driven by ChaCha20-Poly1305 configurations.
+* **Client Runtime**: `wasm-pack` generated WebAssembly layers, exposing compiled cryptographic routines straight to browser runtimes via JavaScript hooks.
+* **Server Stack**: Asynchronous network communication built over the Axum web framework.
 
 ---
 
-## Getting Started
+## 🚀 Getting Started
 
 ### Prerequisites
 * Rust Toolchain (Stable 2021 edition or newer)
-* wasm-pack (cargo install wasm-pack)
-* PostgreSQL Instance
+* `wasm-pack` (Run `cargo install wasm-pack` to install)
 
-### 1. Build the WebAssembly Assets
-Compile the core cryptographic bindings to WebAssembly target layers before running the local infrastructure:
+### 1. Compile Cryptographic WebAssembly Bindings
+Build the core cryptographic bindings using `wasm-pack`. Target the compilation to generate browser-compatible packages:
 
-cd client
-wasm-pack build --target web --out-dir pkg
+cd wasm
+wasm-pack build --target web --out-dir ../web/pkg
 
-cd ../server/wasm_interface
-wasm-pack build --target web --out-dir ../static/pkg
+### 2. Launch the Backend Infrastructure
+Navigate into the backend coordination layer and initialize the runtime server node:
 
-### 2. Configure Environment Variables
-Create a .env file within the root of the server/ directory:
-
-DATABASE_URL=postgres://user:password@localhost:5432/safetender_db
-SERVER_BIND_ADDRESS=127.0.0.1:8080
-JWT_SECRET=your_super_secret_jwt_signing_key_here
-
-### 3. Run the Server Node
-Initialize the persistence layer and launch the Axum multi-threaded platform:
-
-cd server
+cd ../server
 cargo run --release
 
-The server will bind to http://127.0.0.1:8080.
+Once active, navigate your browser to the local server address to access the step-by-step cryptographic sequence dashboards.
 
 ---
 
-## Benchmarking Metrics
+## 🔬 Benchmarking Metrics
 
-The testing workspace validates performance parameters directly referenced in the paper's evaluation[cite: 1]:
-* DKG Setup Phase Latency: Sub-millisecond execution patterns for typical configuration metrics (e.g., t=3, n=5) within standard browser sandboxes[cite: 1].
-* Memory Constraints: Minimal client overhead bounded to approximately 64 MB per Argon2id instance[cite: 1].
-* Sub-Share Disqualification: Fault detection and cheater isolation running inside the asynchronous WebSocket engine[cite: 1].
-
-To evaluate the database connection pool constraints, navigate to the server and trigger the automated system tests:
-
-cd server
-cargo test --test db_connection
+Performance validation and profiling tools are built right into the frontend workspace interfaces (`sharing.html`, `encryption.html`, and `reconstruction.html`), backed by `bench.js`. These profiles trace microsecond execution timelines across:
+* **Field Arithmetic Operations**: Evaluating latency metrics for modular field arithmetic, point inversions, and exponentiation loops.
+* **Secret Reconstruction**: Benchmarking Lagrange interpolation efficiency over escalating numbers of collected sub-shares.
+* **Encryption Throughput**: Assessing data processing rates during symmetric encryption cycles using ChaCha20-Poly1305.
 
 ---
 
-## Citation & Academic Reference
+## 📄 Citation & Academic Reference
 
 If you incorporate this implementation model or baseline metrics within scientific text layouts, please attribute the work as follows[cite: 1]:
-```text
+
+```bibtex
 @article{bouremena2026safetender,
   title={SafeTender: A Web-Native, Zero-Trust Architecture for Sealed-Bid Procurement with Universally Composable Security},
   author={Bouremena, Aya and Boumedienne, Karima and Faraoun, Kamel Mohamed},
   journal={Computer Science Department, EEDIS Laboratory, Djilalli Liabès University},
   year={2026}
 }
-```
-
----
-
-## License
-Distributed under standard academic terms. See the enclosed LICENSE file for permissions.
