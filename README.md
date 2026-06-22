@@ -111,13 +111,14 @@ cargo test --test db_connection
 ## Citation & Academic Reference
 
 If you incorporate this implementation model or baseline metrics within scientific text layouts, please attribute the work as follows[cite: 1]:
-
+```text
 @article{bouremena2026safetender,
   title={SafeTender: A Web-Native, Zero-Trust Architecture for Sealed-Bid Procurement with Universally Composable Security},
   author={Bouremena, Aya and Boumedienne, Karima and Faraoun, Kamel Mohamed},
   journal={Computer Science Department, EEDIS Laboratory, Djilalli Liabès University},
   year={2026}
 }
+```
 
 ---
 
