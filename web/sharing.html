@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic User Lists</title>
+    <link rel="stylesheet" href="./css/styles.css?v=2.0">
+    <link rel="stylesheet" href="./css/all.min.css">
+</head>
+<body>
+
+<div class="controls">
+
+    <div class="form-container">
+        <label>Number of users:
+            <input type="number" id="userCount" min="1" max="10" value="7">
+        </label>
+
+        <label>Threshold:
+            <input type="number" id="threshold" min="0" value="4">
+        </label>
+
+        <button onclick="generate_users_conf()">Generate Scheme</button>
+    </div>
+
+    <div class="button-container">
+        <button class="styled-button" id="enc-button"
+                onclick="window.open('./encryption.html','_blank')">
+            Encryption
+        </button>
+
+        <button class="styled-button" id="rec-button"
+                onclick="window.location='./reconstruction.html'">
+            Reconstruction
+        </button>
+    </div>
+
+    <div class="top-right-container">
+        <button class="styled-button red-button" id="save-button"
+                onclick="save_conf_ToFile()">
+            Save
+        </button>
+
+        <button class="styled-button red-button"
+                onclick="load_conf_FromFile()">
+            Load
+        </button>
+
+        <button class="styled-button red-button"
+                onclick="reset_share_conf()">
+            Reset
+        </button>
+    </div>
+
+</div>
+
+<div class="benchmark-row">
+
+    <button class="styled-button"
+            onclick="runBenchmarkAll()">
+        Benchmark
+    </button>
+
+    <select id="benchmark-threshold" class="benchmark-select">
+        <option value="">Select threshold</option>
+    </select>
+
+    <select id="operation" class="benchmark-select">
+        <option value="">Select operation</option>
+    </select>
+
+    <button class="styled-button"
+            onclick="runBenchmark()">
+        Time Value
+    </button>
+
+    <button class="styled-button"
+            onclick="runBenchmarkCombine()">
+        Combination
+    </button>
+    <div id="bench-result"></div>
+
+</div>
+
+<div class="container" id="tableContainer"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script type="module">
+    import "./scripts/scripts.js";
+    import "./scripts/files.js";
+
+    window.users_list = [];
+    window.wShamir_list = new Map();
+    window.global_threshold = 0;
+    window.global_count = 0;
+    window.shares_count = 0;
+    window.rec_table = null;
+
+    function updateBenchmarkThresholds() {
+        const select = document.getElementById("benchmark-threshold");
+        select.innerHTML = "";
+        select.add(new Option(`⌊n/2⌋+1`));
+        select.add(new Option(`⌊2n/3⌋`));
+        select.add(new Option(`n`));
+    }
+
+    function updateBenchmarkOperations() {
+        const select = document.getElementById("operation");
+        select.innerHTML = "";
+        select.add(new Option(`T_total`));
+        select.add(new Option(`T_agg`));
+    }
+
+    document.getElementById('save-button').disabled = true;
+
+    document.addEventListener("DOMContentLoaded", initializeTablesZIndex);
+    document.addEventListener("DOMContentLoaded", updateBenchmarkThresholds);
+    document.addEventListener("DOMContentLoaded", updateBenchmarkOperations);
+
+    window.addEventListener('beforeunload', () => {
+        console.log('Saving state...');
+        save_share_conf();
+    });
+
+    document.addEventListener('DOMContentLoaded', loadWasm);
+    
+
+    document.addEventListener('wasmLoaded', () => {
+        document.getElementById('save-button').disabled = true;
+        document.getElementById('rec-button').disabled = true;
+        document.getElementById('enc-button').disabled = true;
+        restore_share_conf();
+    });
+</script>
+
+</body>
+</html>

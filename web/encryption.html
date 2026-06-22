@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Encryption Page</title>
+    <link rel="stylesheet" href="./css/enc.css">
+</head>
+<body>
+    <!-- Alert containers -->
+    <div class="alert-container">
+        <div class="alert success" id="text-success-alert">Action successful!</div>
+        <div class="alert error" id="text-error-alert">Error: Invalid key or data.</div>
+        <div class="alert success" id="pdf-success-alert">Action successful!</div>
+        <div class="alert error" id="pdf-error-alert">Error: Invalid key or file.</div>
+    </div>
+
+    <div class="container">
+        <div class="tabs">
+            <div class="tab active" onclick="switchPage('text')">Text Encryption</div>
+            <div class="tab" onclick="switchPage('pdf')">PDF Document Encryption</div>
+        </div>
+
+        <div class="page active" id="text-page">
+            <textarea class="editor" id="text-input" placeholder="Enter text for encryption..."></textarea>
+
+            <div class="input-group">
+                <label for="text-encryption-key">Public Key:</label>
+                <input type="text" id="text-encryption-key" placeholder="Encryption key">
+                <button onclick="encryptText()">Encrypt →</button>
+            </div>
+
+            <textarea class="editor" id="text-encrypted" readonly placeholder="Encrypted text will appear here..."></textarea>
+
+            <div class="input-group">
+                <label for="text-decryption-key">Private Key:</label>
+                <input type="text" id="text-decryption-key" placeholder="Decryption key">
+                <button onclick="decryptText()">← Decrypt</button>
+                <button class="clear-btn" onclick="clearTextFields()">Clear</button>
+            </div>
+
+            <textarea class="editor" id="text-decrypted" readonly placeholder="Decrypted text will appear here..."></textarea>
+        </div>
+
+        <div class="page" id="pdf-page">
+            <div class="input-group">
+                <label for="pdf-encryption-key">Public Key:</label>
+                <input type="text" id="pdf-encryption-key" placeholder="Encryption key">
+                <button onclick="encryptPDF()">Encrypt →</button>
+            </div>
+
+            <div class="pdf-display" id="pdf-upload"
+                 onclick="document.getElementById('pdf-input').click()">
+                Click to upload a PDF
+            </div>
+
+            <input type="file" id="pdf-input" accept="application/pdf"
+                   style="display: none;" onchange="loadPDF(event)">
+
+            <div class="input-group">
+                <label for="pdf-decryption-key">Private Key:</label>
+                <input type="text" id="pdf-decryption-key" placeholder="Decryption key">
+                <button onclick="decryptPDF()">← Decrypt</button>
+                <button class="clear-btn" onclick="clearPDFFields()">Clear</button>
+            </div>
+
+            <div class="pdf-display" id="pdf-decrypted">
+                Decrypted PDF will appear here
+            </div>
+
+        </div>
+                    <button onclick="runEncryptionBenchmark()">
+                         Encryption Benchmark
+                        </button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="./scripts/bench.js"></script>
+
+    <script type="module">
+        import { loadWasm } from "./scripts/scripts.js";
+
+        let currentPdfFileName = "";
+        let currentPdfFile = null;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadWasm();
+        });
+
+        window.cryptoSession = {
+            encryptedBytes: null,
+            decryptedPdfUrl: null,
+            timeEncrypt: null,
+            timeDecrypt: null,
+            fileName: null
+        };
+
+        window.switchPage = function(page) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(`${page}-page`).classList.add('active');
+            document.querySelector(`.tab[onclick="switchPage('${page}')"]`)
+                .classList.add('active');
+        };
+
+        window.loadPDF = function(event) {
+            const file = event.target.files[0];
+
+            if (file) {
+                currentPdfFile = file;
+                currentPdfFileName = file.name;
+
+                const fileURL = URL.createObjectURL(file);
+                document.getElementById('pdf-upload').innerHTML =
+                    `<iframe src="${fileURL}"></iframe>`;
+            } else {
+                currentPdfFile = null;
+                currentPdfFileName = "";
+                document.getElementById('pdf-upload').innerHTML =
+                    'No PDF selected';
+            }
+        };
+
+        window.encryptText = function() {
+            const input = document.getElementById('text-input').value;
+            const pub_key = document.getElementById('text-encryption-key').value;
+
+            let eci_core = new EicCrypt();
+
+            try {
+                const encrypted = eci_core.encrypt(pub_key, input).toString();
+                document.getElementById('text-encrypted').value = encrypted;
+                showTextAlert('success', 'Action successful!');
+            } catch (error) {
+                showTextAlert('error', 'Error: Invalid key or data.');
+            }
+        };
+
+        window.decryptText = function() {
+            const encrypted = document.getElementById('text-encrypted').value;
+            const secret_key = document.getElementById('text-decryption-key').value;
+
+            let eci_core = new EicCrypt();
+
+            try {
+                const decrypted = eci_core.decrypt(secret_key, encrypted);
+                document.getElementById('text-decrypted').value = decrypted;
+                showTextAlert('success', 'Action successful!');
+            } catch (error) {
+                showTextAlert('error', 'Error: Invalid key or data.', error);
+            }
+        };
+
+        window.clearTextFields = function() {
+            document.getElementById('text-input').value = '';
+            document.getElementById('text-encryption-key').value = '';
+            document.getElementById('text-encrypted').value = '';
+            document.getElementById('text-decryption-key').value = '';
+            document.getElementById('text-decrypted').value = '';
+            hideTextAlerts();
+        };
+
+        window.clearPDFFields = function() {
+
+            if (window.cryptoSession?.decryptedPdfUrl) {
+                URL.revokeObjectURL(window.cryptoSession.decryptedPdfUrl);
+                window.cryptoSession.decryptedPdfUrl = null;
+            }
+
+            document.getElementById('pdf-upload').innerHTML =
+                'Click to upload a PDF';
+
+            document.getElementById('pdf-decrypted').innerHTML =
+                'Decrypted PDF will appear here';
+
+            hidePDFAlerts();
+        };
+
+        window.showTextAlert = function(type, message) {
+            const alert = document.getElementById(`text-${type}-alert`);
+            alert.textContent = message;
+            alert.style.display = 'block';
+            setTimeout(() => hideTextAlerts(), 3000);
+        };
+
+        window.hideTextAlerts = function() {
+            document.getElementById('text-success-alert').style.display = 'none';
+            document.getElementById('text-error-alert').style.display = 'none';
+        };
+
+        window.showPDFAlert = function(type, message) {
+            const alert = document.getElementById(`pdf-${type}-alert`);
+            alert.textContent = message;
+            alert.style.display = 'block';
+            setTimeout(() => hidePDFAlerts(), 3000);
+        };
+
+        window.hidePDFAlerts = function() {
+            document.getElementById('pdf-success-alert').style.display = 'none';
+            document.getElementById('pdf-error-alert').style.display = 'none';
+        };
+
+        window.encryptPDF = async function () {
+            let eci_core = new EicCrypt();
+
+            try {
+                if (!currentPdfFile) {
+                    throw new Error("No PDF selected");
+                }
+
+                const inputBytes = new Uint8Array(
+                    await currentPdfFile.arrayBuffer()
+                );
+
+                const result = eci_core.encrypt_pdf(
+                    document.getElementById('pdf-encryption-key').value,
+                    inputBytes
+                );
+
+                window.cryptoSession.encryptedBytes = result.ciphertext;
+                window.cryptoSession.fileName = currentPdfFileName + ".enc";
+                window.cryptoSession.timeEncrypt = result.time_ms;
+
+                showPDFAlert(
+                    'success',
+                    `PDF encrypted in ${result.time_ms.toFixed(2)} ms (stored in memory)`
+                );
+
+            } catch (error) {
+                showPDFAlert('error', error.message || error.toString());
+            }
+        };
+
+        window.decryptPDF = function () {
+            let eci_core = new EicCrypt();
+
+            try {
+                if (!window.cryptoSession.encryptedBytes) {
+                    throw new Error("No encrypted data in memory");
+                }
+
+                const result = eci_core.decrypt_pdf(
+                    document.getElementById('pdf-decryption-key').value,
+                    window.cryptoSession.encryptedBytes
+                );
+
+                window.cryptoSession.timeDecrypt = result.time_ms;
+
+                showPDFAlert(
+                    'success',
+                    `PDF decrypted in ${result.time_ms.toFixed(2)} ms`
+                );
+
+                const blob = new Blob([result.plaintext], {
+                    type: "application/pdf"
+                });
+
+                const url = URL.createObjectURL(blob);
+
+                if (window.cryptoSession.decryptedPdfUrl) {
+                    URL.revokeObjectURL(window.cryptoSession.decryptedPdfUrl);
+                }
+
+                window.cryptoSession.decryptedPdfUrl = url;
+
+                document.getElementById('pdf-decrypted').innerHTML =
+                    `<iframe src="${url}" width="100%" height="100%"></iframe>`;
+
+            } catch (error) {
+                showPDFAlert('error', 'Error: decryption failed.');
+            }
+        };
+
+    </script>
+</body>
+</html>
