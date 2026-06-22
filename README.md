@@ -9,7 +9,7 @@ SafeTender resolves the Chronological Paradox inherent to classical Secret Shari
 ## Repository Structure
 
 The project is decoupled into an asynchronous server backend, a dedicated browser-side client application, and web-native WebAssembly compilation bridges[cite: 1]:
-
+```text
 |-- LICENSE
 |-- README.md
 |-- client/                           # Client-side core cryptography compiled to Wasm
@@ -44,7 +44,7 @@ The project is decoupled into an asynchronous server backend, a dedicated browse
         |-- authentication_opaque/    # Server-side OPAQUE aPAKE engine & cipher suites
         |-- handlers/                 # Endpoint logic (Shamir, Marché events, Commissions, Notifications)
         |-- entities/                 # Database mapping (SeaORM structures)
-
+```
 ---
 
 ## Technology Stack
