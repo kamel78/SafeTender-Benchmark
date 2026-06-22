@@ -1,5 +1,9 @@
 # SafeTender: Benchmark & Reference Implementation
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Language: Rust](https://img.shields.io/badge/Language-Rust-orange.svg)](https://www.rust-lang.org/)
+[![Wasm: Supported](https://img.shields.io/badge/Wasm-Supported-blueviolet.svg)](https://webassembly.org/)
+
 This repository contains the official prototype and benchmarking suite for SafeTender, a decentralized, web-native cryptographic framework for threshold-based e-procurement without a trusted dealer[cite: 1]. 
 
 SafeTender resolves the Chronological Paradox inherent to classical Secret Sharing Schemes (SSS) by combining the additive homomorphism of elliptic curve scalar multiplication over the secp256k1 curve with Feldman Verifiable Secret Sharing (VSS) active-security guarantees[cite: 1]. All client-side cryptographic primitives execute within a memory-safe WebAssembly (Wasm) sandbox[cite: 1]. Shares are preserved across long submission-to-opening windows via a server-blind configuration driven by the OPAQUE asymmetric Password-Authenticated Key Exchange (aPAKE) protocol and Argon2id password hardening[cite: 1].
